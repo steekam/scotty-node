@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors & IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Test & coverage
+coverage/
+.nyc_output/
+
+# Tooling caches
+.turbo/
+.cache/
+.eslintcache
+
+# Local scotty configs (optional — uncomment if you don't want to commit deploy configs)
+# scotty.sh
+# scotty.config.mjs

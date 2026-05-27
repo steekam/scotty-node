@@ -1,0 +1,46 @@
+{
+  "name": "scotty-node",
+  "version": "0.1.0",
+  "description": "A beautiful, concurrent SSH task runner and deployment tool.",
+  "keywords": [],
+  "author": "steekam <waynewanyee@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steekam/scotty-node"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "bin": {
+    "scotty-node": "./bin/scotty.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node ./bin/scotty.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "citty": "^0.1.5",
+    "execa": "^8.0.1",
+    "node-ssh": "^13.1.1",
+    "picocolors": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0"
+}
