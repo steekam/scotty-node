@@ -11,8 +11,8 @@ export default defineConfig({
     env: 'production',
   },
 
-  // Executed locally before any SSH connection is made.
-  local: async (options) => {
+  // Runs before SSH; returned values are available as \`context\` in tasks and hooks.
+  context: async (options) => {
     return {
       APP_DIR: '/var/www/my-node-app',
       TIMESTAMP: Date.now(),
@@ -24,15 +24,15 @@ export default defineConfig({
     pullCode: {
       on: (options) => options.env,
       confirm: (options) => \`Deploying to \${options.env}. Are you sure?\`,
-      run: (options, local) => \`
-        cd \${local.APP_DIR}
+      run: (options, context) => \`
+        cd \${context.APP_DIR}
         git pull origin \${options.branch}
       \`,
     },
     installDeps: {
       on: (options) => options.env,
-      run: (options, local) => \`
-        cd \${local.APP_DIR}
+      run: (options, context) => \`
+        cd \${context.APP_DIR}
         npm ci --only=production
       \`,
     },
@@ -49,14 +49,14 @@ export default defineConfig({
 
   notifications: {
     slack: {
-      url: (options, local) => local.SLACK_WEBHOOK,
+      url: (options, context) => context.SLACK_WEBHOOK,
       channel: '#deployments',
       message: (options) => \`✅ Deployed \${options.branch} to \${options.env}\`,
     },
   },
 
   hooks: {
-    error: async (error, options, local) => {
+    error: async (error, options, context) => {
       console.error(\`🚨 Deployment failed: \${error.message}\`);
     },
   },

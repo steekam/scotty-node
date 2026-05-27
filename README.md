@@ -86,8 +86,8 @@ export default defineConfig({
     env: 'production'
   },
 
-  // Executed locally before any SSH connection is made.
-  local: async (options) => {
+  // Runs before SSH; returned values are available as `context` below.
+  context: async (options) => {
     return {
       APP_DIR: '/var/www/my-node-app',
       TIMESTAMP: Date.now(),
@@ -99,8 +99,8 @@ export default defineConfig({
     pullCode: {
       on: (options) => options.env,
       confirm: (options) => `Deploying to ${options.env}. Are you sure?`,
-      run: (options, local) => `
-        cd ${local.APP_DIR}
+      run: (options, context) => `
+        cd ${context.APP_DIR}
         git pull origin ${options.branch}
       `
     },
@@ -114,7 +114,7 @@ export default defineConfig({
   // Native notification integrations
   notifications: {
     slack: {
-      url: (options, local) => local.SLACK_WEBHOOK,
+      url: (options, context) => context.SLACK_WEBHOOK,
       channel: '#deployments',
       message: (options) => `✅ Deployed ${options.branch} to ${options.env}`
     }
@@ -122,7 +122,7 @@ export default defineConfig({
 
   // Lifecycle hooks executed locally
   hooks: {
-    error: async (error, options, local) => {
+    error: async (error, options, context) => {
       console.error(`🚨 Deployment failed: ${error.message}`);
       // Send a custom email, write to a log, etc.
     }
@@ -134,13 +134,42 @@ To run the deploy macro on the production environment:
 
 ```bash
 scotty-node run deploy --env=production
+scotty-node run deploy --env=staging --dry-run   # local setup only, no SSH
+scotty-node run deploy --yes                     # skip confirmation prompts
 ```
 
 ## 📖 The Configuration API
 
 ### Servers, Options, Macros, & Tasks
 
-(See previous examples for basic task and orchestration syntax).
+Tasks can use the **inline** form (`# @task on:remote deploy() {`) or the **Scotty-style split** form with the annotation on one line and the bash function below:
+
+```bash
+# @task on:$env confirm="Deploy to $env?"
+pullCode() {
+  git pull origin $branch
+}
+```
+
+### SSH & operations (`# @ssh`)
+
+Global SSH settings apply to every remote connection:
+
+```bash
+# @ssh identity=~/.ssh/id_ed25519 jump=bastion@jump.example.com timeout=120000 connect_timeout=15000 retries=3 retry_delay_ms=2000
+```
+
+| Setting | Description |
+|---------|-------------|
+| `identity` | Private key path (`~` expanded) |
+| `jump` | Bastion host (`user@host`) for ProxyJump-style connections |
+| `timeout` | Remote command timeout (ms) |
+| `connect_timeout` | SSH handshake timeout (ms) |
+| `retries` / `retry_delay_ms` | Connection retry attempts and backoff |
+
+Environment overrides: `SCOTTY_SSH_IDENTITY`, `SCOTTY_SSH_JUMP`, `SCOTTY_SSH_TIMEOUT_MS`, `SCOTTY_SSH_RETRIES`, etc.
+
+**Structured logging:** set `SCOTTY_LOG_JSON=1` to emit JSON log lines on stderr (secrets redacted). Safe to use alongside the Clack UI in CI.
 
 ### Lifecycle Hooks
 
@@ -156,11 +185,11 @@ Hooks allow you to execute logic locally at specific points during the task/macr
 }
 ```
 
-**JS/TS Syntax:** Define async functions inside the `hooks` object. You receive the context (options, local variables, and error details if applicable).
+**JS/TS Syntax:** Define async functions inside the `hooks` object. You receive `options`, runtime `context` (from the `context` setup function), and `error` on failure hooks.
 
 ```javascript
 hooks: {
-  success: async (options, local) => { /* ... */ }
+  success: async (options, context) => { /* ... */ }
 }
 ```
 
@@ -168,25 +197,51 @@ hooks: {
 
 scotty-node ships with built-in integrations for popular messaging platforms, eliminating the need to write complex curl requests. Notifications are automatically dispatched when a macro or task completes successfully.
 
-**Currently supported channels:** `slack`, `discord`, `telegram`, `webhook`.
+**Currently supported channels:** `slack`, `discord`, `gws`, `telegram`, `email`, `webhook`.
 
 **Bash Syntax:** Use the `# @notify` directive followed by the channel name and key-value arguments. Variables are automatically interpolated.
 
 ```bash
 # @notify slack url=$SLACK_URL channel="#ops" message="Deployed $env"
 # @notify discord url=$DISCORD_URL message="Update live!"
+# @notify gws url=$GOOGLE_CHAT_WEBHOOK message="Deployed $branch to $env"
+# @notify telegram token=$TELEGRAM_BOT_TOKEN chat_id=$TELEGRAM_CHAT_ID message="Deployed $env"
+# @notify email to=ops@example.com smtp_host=$SMTP_HOST subject="Deploy $env" message="Done"
 ```
 
-**JS/TS Syntax:** Define objects inside the `notifications` block. You can use functions to dynamically compute payloads based on your options and local state.
+**JS/TS Syntax:** Define objects inside the `notifications` block. Resolver functions receive `(options, context)`.
 
 ```javascript
 notifications: {
   discord: {
     url: process.env.DISCORD_WEBHOOK,
     message: (options) => `🚀 Version ${options.branch} deployed to ${options.env}!`
-  }
+  },
+  gws: {
+    url: process.env.GOOGLE_CHAT_WEBHOOK,
+    message: (options) => `Deployed ${options.branch} to ${options.env}`,
+  },
+  telegram: {
+    token: process.env.TELEGRAM_BOT_TOKEN,
+    chat_id: process.env.TELEGRAM_CHAT_ID,
+    message: (options) => `Deployed to ${options.env}`,
+  },
+  email: {
+    to: 'ops@example.com',
+    subject: (options) => `Deploy ${options.env}`,
+    message: 'Pipeline finished successfully',
+    smtp_host: process.env.SMTP_HOST,
+    smtp_user: process.env.SMTP_USER,
+    smtp_pass: process.env.SMTP_PASS,
+  },
 }
 ```
+
+| Channel | Required params | Notes |
+|---------|-----------------|-------|
+| `gws` | `url`, `message` | Google Workspace Chat incoming webhook |
+| `telegram` | `token`, `chat_id`, `message` | `token` can use `TELEGRAM_BOT_TOKEN` env |
+| `email` | `to`, `message`, `smtp_host` | SMTP settings via params or `SMTP_*` env vars |
 
 ## 💻 CLI Commands
 
@@ -195,6 +250,9 @@ notifications: {
 | `scotty-node init` | Creates a boilerplate `scotty.sh` or `scotty.config.mjs` file. |
 | `scotty-node run <macro\|task>` | Executes a macro or a specific task. |
 | `scotty-node doctor` | Parses your configuration file for syntax errors, tests local execution, and attempts a dry-run SSH connection to your servers to verify access. |
+| `scotty-node doctor --ssh` | Also attempts SSH connections to every defined server. |
+
+**Run flags:** `--env=value` overrides `@option` defaults. `--dry-run` / `--pretend` runs local preamble and skips SSH and notifications. `--yes` / `-y` skips confirmation prompts (also auto-enabled when `CI=true`).
 
 ## 🧠 Why Node.js?
 

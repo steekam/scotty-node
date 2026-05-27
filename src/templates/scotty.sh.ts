@@ -1,6 +1,7 @@
 export const SCOTTY_SH_TEMPLATE = `#!/usr/bin/env scotty-node
 
 # @servers production=deployer@api.example.com staging=deployer@staging.example.com
+# @ssh identity=~/.ssh/id_ed25519 timeout=120000 connect_timeout=15000 retries=2
 # @option branch=main
 # @option env=production
 
@@ -13,17 +14,20 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 # --- TASKS ---
 
-# @task on:$env confirm="Deploying to $env. Are you sure?" pullCode() {
+# @task on:$env confirm="Deploying to $env. Are you sure?"
+pullCode() {
   cd $APP_DIR
   git pull origin $BRANCH
 }
 
-# @task on:$env installDeps() {
+# @task on:$env
+installDeps() {
   cd $APP_DIR
   npm ci --only=production
 }
 
-# @task on:$env parallel restartServer() {
+# @task on:$env parallel
+restartServer() {
   pm2 reload all --update-env
 }
 
