@@ -1,20 +1,59 @@
-# 🚀 scotty-node
+# scotty-node
 
-A beautiful, concurrent SSH task runner and deployment tool for the Node.js ecosystem.
+A concurrent SSH task runner and deployment tool for the Node.js ecosystem.
 
-scotty-node allows you to define remote server tasks and deployment pipelines using standard bash scripts enriched with simple annotations, or natively using JavaScript/TypeScript. It executes these tasks over SSH using Node.js, providing concurrent execution, lifecycle hooks, native notifications, and a stunning terminal UI.
+scotty-node allows you to define remote server tasks and deployment pipelines using standard bash scripts enriched with simple annotations, or natively using JavaScript/TypeScript. It executes these tasks over SSH using Node.js, providing concurrent execution, lifecycle hooks, native notifications, and a terminal UI.
 
 Inspired by [Laravel Envoy](https://laravel.com/docs/envoy) and [spatie/scotty](https://github.com/spatie/scotty), rebuilt for JavaScript and TypeScript developers.
 
-## 📦 Installation
+## Installation
 
-Install globally via npm to use the CLI anywhere:
+Published to [GitHub Packages](https://github.com/steekam/scotty-node/packages) as `@steekam/scotty-node`.
+
+### 1. Authenticate with GitHub Packages
+
+Using the GitHub CLI (recommended):
 
 ```bash
-npm install -g scotty-node
+gh auth login
+gh auth token | npm login --registry=https://npm.pkg.github.com --scope=@steekam
 ```
 
-## ⚡ Getting Started
+Or add to `~/.npmrc` (see [.npmrc.example](.npmrc.example)):
+
+```ini
+@steekam:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
+```
+
+The token needs `read:packages` to install. For private repositories, include `repo` scope as well.
+
+### 2. Install the CLI
+
+**In a project (recommended):**
+
+```bash
+pnpm add -D @steekam/scotty-node
+pnpm exec scotty-node --help
+```
+
+**Globally:**
+
+```bash
+pnpm add -g @steekam/scotty-node
+scotty-node --help
+```
+
+### Releases
+
+New versions are published automatically when a [GitHub Release](https://github.com/steekam/scotty-node/releases) is published.
+
+```bash
+# Maintainer: tag and release (triggers publish workflow)
+gh release create v0.1.0 --title "v0.1.0" --notes "Initial release"
+```
+
+## Getting Started
 
 Initialize a new project by running:
 
@@ -60,20 +99,20 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 # --- HOOKS & NOTIFICATIONS ---
 
-# @notify slack url=$SLACK_WEBHOOK channel="#deployments" message="✅ Deployed $branch to $env"
+# @notify slack url=$SLACK_WEBHOOK channel="#deployments" message="Deployed $branch to $env"
 
 # @hook error() {
-  echo "🚨 Deployment failed! Reverting..."
+  echo "Deployment failed! Reverting..."
   # custom local bash logic here
 }
 ```
 
 ### Option 2: The JavaScript/TypeScript Approach (`scotty.config.mjs`)
 
-Just like how original Scotty supports Laravel Envoy's Blade files natively, scotty-node fully supports defining your configuration in pure JavaScript or TypeScript. This provides superior IDE intellisense, typing, and the ability to use native Node modules.
+Define your configuration in JavaScript for IDE support, typing, and native Node modules.
 
 ```javascript
-import { defineConfig } from 'scotty-node';
+import { defineConfig } from '@steekam/scotty-node';
 
 export default defineConfig({
   servers: {
@@ -111,20 +150,17 @@ export default defineConfig({
     deploy: ['pullCode', 'installDeps', 'restartServer']
   },
 
-  // Native notification integrations
   notifications: {
     slack: {
       url: (options, context) => context.SLACK_WEBHOOK,
       channel: '#deployments',
-      message: (options) => `✅ Deployed ${options.branch} to ${options.env}`
+      message: (options) => `Deployed ${options.branch} to ${options.env}`
     }
   },
 
-  // Lifecycle hooks executed locally
   hooks: {
     error: async (error, options, context) => {
-      console.error(`🚨 Deployment failed: ${error.message}`);
-      // Send a custom email, write to a log, etc.
+      console.error(`Deployment failed: ${error.message}`);
     }
   }
 });
@@ -138,7 +174,7 @@ scotty-node run deploy --env=staging --dry-run   # local setup only, no SSH
 scotty-node run deploy --yes                     # skip confirmation prompts
 ```
 
-## 📖 The Configuration API
+## The Configuration API
 
 ### Servers, Options, Macros, & Tasks
 
@@ -151,7 +187,7 @@ pullCode() {
 }
 ```
 
-### SSH & operations (`# @ssh`)
+### SSH and operations (`# @ssh`)
 
 Global SSH settings apply to every remote connection:
 
@@ -173,7 +209,7 @@ Environment overrides: `SCOTTY_SSH_IDENTITY`, `SCOTTY_SSH_JUMP`, `SCOTTY_SSH_TIM
 
 ### Lifecycle Hooks
 
-Hooks allow you to execute logic locally at specific points during the task/macro lifecycle. This is incredibly useful for cleanup, custom logging, or triggering local scripts.
+Hooks allow you to execute logic locally at specific points during the task/macro lifecycle.
 
 **Supported hooks:** `before`, `after`, `success`, `error`.
 
@@ -195,7 +231,7 @@ hooks: {
 
 ### Notifications
 
-scotty-node ships with built-in integrations for popular messaging platforms, eliminating the need to write complex curl requests. Notifications are automatically dispatched when a macro or task completes successfully.
+scotty-node ships with built-in integrations for popular messaging platforms. Notifications are dispatched when a macro or task completes successfully.
 
 **Currently supported channels:** `slack`, `discord`, `gws`, `telegram`, `email`, `webhook`.
 
@@ -215,7 +251,7 @@ scotty-node ships with built-in integrations for popular messaging platforms, el
 notifications: {
   discord: {
     url: process.env.DISCORD_WEBHOOK,
-    message: (options) => `🚀 Version ${options.branch} deployed to ${options.env}!`
+    message: (options) => `Version ${options.branch} deployed to ${options.env}`
   },
   gws: {
     url: process.env.GOOGLE_CHAT_WEBHOOK,
@@ -243,19 +279,19 @@ notifications: {
 | `telegram` | `token`, `chat_id`, `message` | `token` can use `TELEGRAM_BOT_TOKEN` env |
 | `email` | `to`, `message`, `smtp_host` | SMTP settings via params or `SMTP_*` env vars |
 
-## 💻 CLI Commands
+## CLI Commands
 
 | Command | Description |
 |---------|-------------|
 | `scotty-node init` | Creates a boilerplate `scotty.sh` or `scotty.config.mjs` file. |
 | `scotty-node run <macro\|task>` | Executes a macro or a specific task. |
-| `scotty-node doctor` | Parses your configuration file for syntax errors, tests local execution, and attempts a dry-run SSH connection to your servers to verify access. |
+| `scotty-node doctor` | Parses your configuration file for syntax errors, tests local execution, and verifies setup. |
 | `scotty-node doctor --ssh` | Also attempts SSH connections to every defined server. |
 
 **Run flags:** `--env=value` overrides `@option` defaults. `--dry-run` / `--pretend` runs local preamble and skips SSH and notifications. `--yes` / `-y` skips confirmation prompts (also auto-enabled when `CI=true`).
 
-## 🧠 Why Node.js?
+## Why Node.js?
 
 While the task execution layer remains purely Bash on the server, the orchestration engine is pure Node.js. By leveraging native `ssh2` client bindings and asynchronous I/O, scotty-node achieves high-performance parallel execution without relying on local system binaries.
 
-The terminal output is powered by [@clack/prompts](https://github.com/natemoo-re/clack), ensuring a stunning, step-by-step UI that streams your remote server logs back to your machine cleanly and elegantly.
+The terminal output is powered by [@clack/prompts](https://github.com/natemoo-re/clack).

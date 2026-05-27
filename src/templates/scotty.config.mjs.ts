@@ -1,4 +1,4 @@
-export const SCOTTY_CONFIG_MJS_TEMPLATE = `import { defineConfig } from 'scotty-node';
+export const SCOTTY_CONFIG_MJS_TEMPLATE = `import { defineConfig } from '@steekam/scotty-node';
 
 export default defineConfig({
   servers: {
@@ -51,13 +51,13 @@ export default defineConfig({
     slack: {
       url: (options, context) => context.SLACK_WEBHOOK,
       channel: '#deployments',
-      message: (options) => \`✅ Deployed \${options.branch} to \${options.env}\`,
+      message: (options) => \`Deployed \${options.branch} to \${options.env}\`,
     },
   },
 
   hooks: {
     error: async (error, options, context) => {
-      console.error(\`🚨 Deployment failed: \${error.message}\`);
+      console.error(\`Deployment failed: \${error.message}\`);
     },
   },
 });

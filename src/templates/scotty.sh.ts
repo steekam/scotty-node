@@ -33,10 +33,10 @@ restartServer() {
 
 # --- HOOKS & NOTIFICATIONS ---
 
-# @notify slack url=$SLACK_WEBHOOK channel="#deployments" message="✅ Deployed $branch to $env"
+# @notify slack url=$SLACK_WEBHOOK channel="#deployments" message="Deployed $branch to $env"
 
 # @hook error() {
-  echo "🚨 Deployment failed! Reverting..."
+  echo "Deployment failed! Reverting..."
   # custom local bash logic here
 }
 `;

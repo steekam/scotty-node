@@ -1,0 +1,6 @@
+# Copy to ~/.npmrc or your project's .npmrc (do not commit tokens).
+@steekam:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
+
+# Create a token: GitHub Settings → Developer settings → Personal access tokens
+# Scopes: read:packages (install), write:packages (publish), repo (private packages)
